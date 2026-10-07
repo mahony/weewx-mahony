@@ -60,3 +60,8 @@ scrapers that fetch only the HTML. IPs are located offline with the free
 `db.mmdb` in the data dir, refresh monthly); raw IPs stay in the local SQLite file,
 never in the map. Setup: a venv with `maxminddb` in the data dir, the `.mmdb`
 file, and `nginx/wx_log.conf` (see its header) so requests are logged with their host.
+
+The page ends with an activity bar chart of visits over time. It opens on the last 24 hours;
+drag on the chart to select another range (drag the edges to resize or the middle to move,
+click a bar to select it, double-click for everything, or use the 24 hours / 7 days / 30 days /
+All buttons), and the map shows only visits in that range.
