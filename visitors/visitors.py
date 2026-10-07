@@ -14,8 +14,9 @@ visitors are. Meant to run from cron (every ~15 min).
 - IPs are located offline with the DB-IP City Lite database; no IP leaves this
   machine. Raw IPs stay in the local SQLite database; the generated map contains
   only city-level places and counts, never IPs.
-- Output: MAP_PATH, a standalone HTML page (Leaflet via CDN) that is NOT in any
-  web root, so it is private. Open it locally.
+- Output: index.html in an unguessable directory under WEB_ROOT (name in SECRET_FILE),
+  so it is served but unlinked (and marked noindex). Anyone with the URL can view it;
+  it holds city-level places and counts only, never IPs.
 """
 from __future__ import annotations
 
@@ -35,7 +36,8 @@ import maxminddb
 DATA_DIR = Path.home() / ".local/share/wx-visitors"
 DB_PATH = DATA_DIR / "visitors.db"
 GEO_DB = DATA_DIR / "db.mmdb"
-MAP_PATH = DATA_DIR / "map.html"
+WEB_ROOT = Path("/var/www/html/weewx")
+SECRET_FILE = DATA_DIR / "map_dir"  # random directory name under WEB_ROOT; kept out of git
 LOG_DIR = Path("/var/log/nginx")
 HOSTS = {"wx.nerpy.co", "wx.mahony.me"}
 VIEW_PATHS = {"/", "/index.html"}
@@ -170,13 +172,16 @@ def write_map(db: sqlite3.Connection) -> None:
     page = TEMPLATE.replace("%DATA%", json.dumps(data)).replace(
         "%SUMMARY%", html.escape(f"{total[0]} visits from {total[1]} unique visitors in {len(data)} places since {since} "
                                  f"(updated {time.strftime('%Y-%m-%d %H:%M')})"))
-    tmp = MAP_PATH.with_suffix(".tmp")
+    out_dir = WEB_ROOT / SECRET_FILE.read_text().strip()
+    out_dir.mkdir(exist_ok=True)
+    tmp = out_dir / "index.tmp"
     tmp.write_text(page)
-    tmp.replace(MAP_PATH)
+    tmp.chmod(0o664)
+    tmp.replace(out_dir / "index.html")
 
 
 TEMPLATE = """<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Weather site visitors</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
