@@ -180,6 +180,19 @@
       }, {passive: true});
       swipeImg.addEventListener('touchend', swipeStop);
       swipeImg.addEventListener('touchcancel', swipeStop);
+
+      // Reload every 5 minutes (matches the snapshot cron and the weewx report cycle), but not
+      // while a timelapse plays or the user has browsed away from the latest frame, and not in
+      // a hidden tab (it reloads as soon as the tab is shown again if the page is stale).
+      var pageLoaded = Date.now();
+      function maybeReload() {
+        if (Date.now() - pageLoaded < 300000 || document.hidden || camTimer || camBrowsed) {
+          return;
+        }
+        location.reload();
+      }
+      setInterval(maybeReload, 15000);
+      document.addEventListener('visibilitychange', maybeReload);
     })();
     </script>
     #else
