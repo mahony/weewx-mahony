@@ -39,7 +39,7 @@ The live files are meant to be symlinked to this repo so edits are always tracke
 The `weewx` user must be able to read the repo path (e.g.
 `setfacl -m u:weewx:x ~`). Add the cron entry
 `*/5 * * * * python3 ~/.local/share/cam-snapshot/fetch_snapshot.py`, then run
-`weectl report run`. Paths, hub address and the 192.168.x.x IP are hardcoded for one
+`weectl report run`. Paths and the hub address are hardcoded for one
 setup; adjust the constants at the top of the script.
 
 ## License
