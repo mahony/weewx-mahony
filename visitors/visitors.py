@@ -14,7 +14,7 @@ visitors are. Meant to run from cron (every ~15 min).
 - IPs are located offline with the DB-IP City Lite database; no IP leaves this
   machine. Raw IPs stay in the local SQLite database; the generated map contains
   only city-level places and counts, never IPs.
-- Output: index.html in an unguessable directory under WEB_ROOT (name in SECRET_FILE),
+- Output: index.html in an unlinked directory under WEB_ROOT (name in SECRET_FILE),
   so it is served but unlinked (and marked noindex). Anyone with the URL can view it;
   it holds city-level places and counts only, never IPs.
 """
@@ -37,7 +37,7 @@ DATA_DIR = Path.home() / ".local/share/wx-visitors"
 DB_PATH = DATA_DIR / "visitors.db"
 GEO_DB = DATA_DIR / "db.mmdb"
 WEB_ROOT = Path("/var/www/html/weewx")
-SECRET_FILE = DATA_DIR / "map_dir"  # random directory name under WEB_ROOT; kept out of git
+SECRET_FILE = DATA_DIR / "map_dir"  # directory name under WEB_ROOT
 LOG_DIR = Path("/var/log/nginx")
 HOSTS = {"wx.nerpy.co", "wx.mahony.me"}
 VIEW_PATHS = {"/", "/index.html"}

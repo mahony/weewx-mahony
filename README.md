@@ -51,8 +51,8 @@ distributed under the GPL v3 (or later); the rest of this repo is licensed the s
 ## Visitor map (`visitors/`, `nginx/`)
 
 `visitors/visitors.py` (cron, every 15 min) counts page views from the nginx logs and
-writes a map of where visitors are to `index.html` in a randomly named, unlinked directory
-under the web root (name in `~/.local/share/wx-visitors/map_dir`, not in git; the URL is
+writes a map of where visitors are to `index.html` in an unlinked directory
+under the web root (name in `~/.local/share/wx-visitors/map_dir`, default `visitors`; the URL is
 `https://<host>/<that name>/`, marked noindex — anyone with the URL can view it). A view is a GET of `/` by a non-bot
 public IP that also fetches page assets like a browser does, which filters out the
 scrapers that fetch only the HTML. IPs are located offline with the free
