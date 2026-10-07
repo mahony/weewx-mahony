@@ -1,75 +1,60 @@
-# Spike: cam widget browsing UX + archive resolution
+# Spike: visitor map + activity chart
 
-Files are tracked in this repo (`skins/Seasons/*`, `cam-snapshot/fetch_snapshot.py`)
-and the live copies are symlinks to them: `/etc/weewx/skins/Seasons/{cam.inc,
-cam_archive.inc,cam_archive.html.tmpl,skin.conf}` and
-`/home/tod/.local/share/cam-snapshot/fetch_snapshot.py`. Edit either path (same
-file), but avoid tools that replace a symlink with a regular file. Web output
-lives in `/var/www/html/weewx`; `cam.env` (credentials) is deliberately not in
-the repo. After editing skin files run `cd /etc/weewx && weectl report run` (a
-`seasons.css` PermissionError in its output is pre-existing/harmless).
+Repo layout reminder: `skins/Seasons/*` and `cam-snapshot/fetch_snapshot.py` are
+symlinked from their live paths (`/etc/weewx/skins/Seasons/...`,
+`~/.local/share/cam-snapshot/`); `cam.env` (credentials) is not in the repo.
+Web output lives in `/var/www/html/weewx` (group-writable by `weewx`; tod is in the group).
 
 ## What we did
 
-- Timelapse interaction rework, applied to both the live widget (`cam.inc`,
-  last 24h + latest snapshot) and the archive page (`cam_archive.inc`):
-  - Click while playing freezes on the current frame (no longer jumps to latest);
-    click again resumes from that frame.
-  - Left/right arrows step one snapshot when not playing; held keys auto-repeat.
-  - Esc returns to current snapshot (live widget: latest; archive: selected
-    day's first frame) whether playing or browsing.
-  - Space bar = same as clicking the photo (ignored on input/select/button/link
-    focus, ignores key repeat).
-  - Live widget wraps at both ends (→ at latest goes to 24h ago, ← at oldest
-    goes to latest). 
-  - Archive page: stepping past a day's end/start moves to the adjacent day and
-    wraps around the whole archive (date list is newest-first; empty days are
-    skipped; date picker follows along; old photo stays on screen while the
-    next day's frames.json loads).
-  - Mobile: swipe left/right = right/left arrow; swipe-and-hold auto-repeats
-    (500ms delay, then ~30/s) via touchmove, direction fixed at first crossing
-    (40px, mostly horizontal). `touch-action: pan-y` on the img.
-  - Arrow/space/swipe handlers ignored while a timelapse is playing (except Esc/space).
-  - User confirmed arrows, freeze, Esc, wrap, and swipe work ("works great");
-    swipe-hold, archive day-crossing and the space bar were not yet confirmed,
-    and none of the JS was syntax-checked (no node on this box).
-- Archive resolution: raised `ARCHIVE_WIDTH` 960 → 1440 (`ARCHIVE_QUALITY = 80`
-  constant added) in `fetch_snapshot.py`. Measured against a real camera frame:
-  ~97KB/frame ≈ 10.5 GB/yr (was ~45KB ≈ 4.7 GB/yr). Alternatives considered:
-  1920/q70 ≈ 14 GB/yr, 2560/q80 ≈ 31 GB/yr.
-- Camera's native frame is 5120×1440 (~545KB JPEG ≈ 59 GB/yr if archived
-  untouched; raw RGB would be ~184–327 GB/yr+). Used a temporary sample-save
-  hack in the script to measure, then removed it and deleted the sample file.
-- Altitude check: USGS EPQS gives ~81 ft ground at the configured coords;
-  + ~40 ft building ≈ 120–130 ft, consistent with `altitude = 127, foot` in
-  `weewx.conf`. (weewx location in config is "Cranston St Armory"; coords are
-  taken from the config, not geocoded from the street address.)
-
-- Put the files under git and symlinked the live paths to the repo (commit
-  882e726, author "Tod" <me@tod.me>, repo-local git config). Needed
-  `sudo setfacl -m u:weewx:x /home/tod` (run by the user in a real terminal; sudo
-  has no tty in Claude's shell) so the `weewx` user can traverse /home/tod to
-  read the linked skin files. `weectl report run` as tod works; the check as the
-  weewx user was left for the user to run.
+- Verified the interrupted session's work end to end: `nginx/wx_log.conf` installed in
+  `conf.d`, `access_log ... wx;` in both server blocks (443 and 80) of `wx-nerpy` and
+  `wx-mahony`, log is live, venv + `db.mmdb` + `*/15` cron entry in place. (`nginx -t`
+  as tod fails on the snakeoil key permission; harmless, needs sudo.)
+- Moved the map from a private local file to the web: `visitors/visitors.py` now writes
+  `index.html` into `/var/www/html/weewx/<name>/`, where `<name>` is read from
+  `~/.local/share/wx-visitors/map_dir` (now `visitors`, so
+  `https://wx.nerpy.co/visitors/`, also on wx.mahony.me). No nginx change needed
+  (autoindex is off). Page is `noindex`. Started with a random dir name, dropped it for
+  a readable URL since the content (city-level places + counts, no IPs) is low-sensitivity.
+  Unlinked is not protected: anyone with the URL sees it. Basic auth was offered, declined.
+- Added an activity bar chart under the map (client-side SVG, no lib): visits per
+  bucket (15m..1w, chosen by width/history), brush to select a range (new / resize edges /
+  move / click a bar / dblclick = all), presets 24h/7d/30d/All, default = last 24h.
+  Map markers, stats line, and range label filter live while dragging; map re-fits on
+  release. Tooltip on hover, collapsible data table, light/dark tokens (series colour
+  from the dataviz palette, orange to match the map dots).
+- `write_map` now embeds `{places, visits:[[ts, place, anonymousVisitorIdx]], updated}`
+  instead of pre-aggregated places; no IPs reach the page. Visits with no lat/lon are
+  dropped from the page (the old summary counted them).
+- Bugs found while testing in Chrome: y-tick step loop jumped 5 -> 50 (rewritten);
+  tooltip position used `svg.offsetTop` (undefined on SVG elements, now uses
+  getBoundingClientRect); added a ResizeObserver on `#map` for `invalidateSize`.
+  The brief grey strip on the map in screenshots was just tiles still loading.
+- Installed the `frontend-design` plugin (`/plugin install frontend-design@claude-plugins-official`);
+  not really needed for this work.
+- Camera `weewx`-user check passed (`sudo -u weewx cat .../cam.inc` -> ok).
+- User manually validated everything from this session (including real mouse drag, which
+  Claude's automated drag tool could not exercise; synthetic PointerEvents did work).
+- Commits: 03281f2 (serve map under web root), 438c8b0 (plain /visitors/ path),
+  c6c7f8b (activity chart).
 
 ## Next steps
 
-- Verify as the weewx user (user to run; not done yet):
-  `sudo -u weewx cat /etc/weewx/skins/Seasons/cam.inc >/dev/null && echo ok`, and
-  confirm the next scheduled report cycle still renders (no errors in syslog).
-
-- Confirm on desktop + phone: archive day-crossing/wrap, hold-scrub across day
-  boundaries, and the space bar. Smoke-test the JS in a browser console if
-  anything misbehaves (nothing was syntax-checked).
-- After a day or so at 1440px, check avg file size in
-  `/var/www/html/weewx/cam_snapshots` to confirm ~10 GB/yr; adjust
-  `ARCHIVE_WIDTH`/`ARCHIVE_QUALITY` if off. Existing archived days stay 960px.
-- Still unconfirmed from last spike: real cron run against the Reolink hub
-  (`tail /home/tod/.local/share/cam-snapshot/fetch.log`) — the sample capture
-  this session did succeed, so that is likely fine now.
-- Loose ends / possible polish: no touch equivalent of Esc (only reload or
-  keep swiping on the live widget); archive wrap loops forever only if every
-  day were empty (not realistic).
+- **Revisit camera archive file size (tomorrow or later):** first check was inconclusive.
+  `cam_archive` days 10-05/10-06 avg ~40 KB (old 960px, mostly night); live set in
+  `cam_snapshots` avg ~45 KB (night frames). Once daytime 1440px frames have rotated into
+  `cam_archive/<date>/` (frames archive after 24h), run:
+  `cd /var/www/html/weewx/cam_archive; for d in 2026-10-0*/; do find $d -name '*.jpg' -printf '%s\n' | awk -v d=$d '{s+=$1;n++} END{printf "%s %d frames, avg %.0f KB\n", d, n, s/n/1024}'; done`
+  Expect ~70-100 KB/day average (~10.5 GB/yr at ~97 KB). If much higher, lower
+  `ARCHIVE_QUALITY`/`ARCHIVE_WIDTH` in `fetch_snapshot.py`.
+- Visitor map polish (optional): exclude own IP(s) (Boston dot is likely Tod's own
+  traffic); a few dots land in the Atlantic (DB-IP city-level guesses); refresh `db.mmdb`
+  monthly (DB-IP City Lite); page is a static snapshot, reload for new data and the
+  selection resets to 24h.
+- Cam widget loose ends from last spike: confirm archive day-crossing/wrap and hold-scrub
+  across day boundaries on desktop + phone (space bar and swipe-hold also unconfirmed
+  then; user has since validated the widget generally); real cron run against the
+  Reolink hub (`tail ~/.local/share/cam-snapshot/fetch.log`).
 - Still deferred: ffmpeg MP4 timelapses per day; thinning old archive days.
-- If the repo ever moves/renames, the symlinks break (and the ACL only covers
-  /home/tod traversal).
+- If the repo moves/renames, the symlinks break (and the ACL only covers /home/tod).
