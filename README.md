@@ -47,3 +47,15 @@ setup; adjust the constants at the top of the script.
 GNU General Public License v3 — see `LICENSE`. `skins/Seasons/skin.conf` is derived
 from the WeeWX Seasons skin, Copyright (c) 2018-2021 Tom Keffer and Matthew Wall,
 distributed under the GPL v3 (or later); the rest of this repo is licensed the same way.
+
+## Visitor map (`visitors/`, `nginx/`)
+
+`visitors/visitors.py` (cron, every 15 min) counts page views from the nginx logs and
+writes a private map of where visitors are, to `~/.local/share/wx-visitors/map.html`
+(open it locally; it is not under any web root). A view is a GET of `/` by a non-bot
+public IP that also fetches page assets like a browser does, which filters out the
+scrapers that fetch only the HTML. IPs are located offline with the free
+[DB-IP City Lite](https://db-ip.com/db/download/ip-to-city-lite) database (CC-BY 4.0;
+`db.mmdb` in the data dir, refresh monthly); raw IPs stay in the local SQLite file,
+never in the map. Setup: a venv with `maxminddb` in the data dir, the `.mmdb`
+file, and `nginx/wx_log.conf` (see its header) so requests are logged with their host.
