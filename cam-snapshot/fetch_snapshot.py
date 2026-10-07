@@ -19,7 +19,7 @@ from pathlib import Path
 
 from PIL import Image
 
-HERE = Path(__file__).resolve().parent
+HERE = Path(__file__).absolute().parent  # not resolve(): the live path is a symlink into the repo, and cam.env sits beside the symlink
 ENV_FILE = HERE / "cam.env"
 
 HUB = "192.168.68.2"
